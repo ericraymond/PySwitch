@@ -164,8 +164,7 @@ class PySwitchUI {
                         .addClass('fa-ellipsis-v')
                         .on("click", async function() {
                             try {
-                                const newVisible = that.#additionalInputsContainer.hasClass('hidden')
-                                that.#toggleAdditionalInputs(newVisible);
+                                that.showAdditionalInputs(!that.additionalInputsShown());
                                 
                             } catch (e) {
                                 that.#controller.handle(e);
@@ -257,11 +256,18 @@ class PySwitchUI {
     /**
      * Shows/hides the additional inputs panel
      */
-    #toggleAdditionalInputs(show) {
+    showAdditionalInputs(show) {
         this.#additionalInputsContainer.toggleClass('hidden', !show);
                                 
         this.#additionalInputsButton.toggleClass('fa-ellipsis-v', !show);
         this.#additionalInputsButton.toggleClass('fa-times', show);
+    }
+
+    /**
+     * Returns if the additional inputs are visible.
+     */
+    additionalInputsShown() {
+        return !this.#additionalInputsContainer.hasClass('hidden');
     }
 
     /**
@@ -341,13 +347,28 @@ class PySwitchUI {
                     }
                 }),
 
+                // Local Filesystem
+                new SingleEntryProvider({
+                    text: "Open Directory...",
+                    onSelect: async function(entry) {
+                        const sel = new LocalFolderSelection();
+
+                        // Select a directory (which is stored in indexedDB)
+                        await sel.select();
+
+                        // Call the local folder config (which loads the dir handle from indexedDB)
+                        await sel.call(that.#controller);
+                    },
+                    sortString: "XXXXXXXXXXXXXXXX1"
+                }),
+
                 // Upload
                 new SingleEntryProvider({
                     text: "Upload...",
                     onSelect: async function(entry) {
                         await (new Upload(that.#controller)).upload(that.#controller.currentConfig);
                     },
-                    sortString: "XXXXXXXXXXXXXXXX"
+                    sortString: "XXXXXXXXXXXXXXXX2"
                 })
             ]
         }); 
@@ -443,13 +464,44 @@ class PySwitchUI {
                     }
                 }),
 
+                // Local Folder
+                new SingleEntryProvider({
+                    text: "Save to Directory...",
+                    onSelect: async function(entry) {
+                        let data = null;
+                        try {
+                            data = await that.#controller.currentConfig.get();
+
+                        } catch(e) {
+                            console.log(e);
+                            throw new Error("No data to save");
+                        }
+
+                        // Select a directory (which is stored in indexedDB)
+                        const sel = new LocalFolderSelection();
+                        await sel.select();
+
+                        // Save the configuration
+                        const dummyConfig = new LocalFolderConfiguration(that.#controller);
+                        dummyConfig.set(data);
+                        await dummyConfig.save();
+
+                        that.#controller.currentConfig.resetDirtyState();
+
+                        that.#controller.ui.notifications.message("Successfully saved the configuration to the local folder", "S");
+                        
+                        await sel.call(that.#controller);
+                    },
+                    sortString: "XXXXXXXXXXXXXXXX1"
+                }),
+
                 // Download
                 new SingleEntryProvider({
                     text: "Download ZIP",
                     onSelect: async function(entry) {
                         await (new Download()).download(that.#controller.currentConfig);
                     },
-                    sortString: "XXXXXXXXXXXXXXXX"
+                    sortString: "XXXXXXXXXXXXXXXX2"
                 })
             ]
         }); 

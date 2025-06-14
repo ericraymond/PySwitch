@@ -29,6 +29,7 @@ class KemperFunctionMeta extends FunctionMeta {
             case "LOOPER_REC_PLAY_OVERDUB": return "Looper Rec|Play|OD";
             case "ENCODER_BPM": return "Tempo (BPM)";
             case "ENCODER_RIG_TRANSPOSE": return "Rig Transpose";
+            case "ENCODER_BANK_SELECT": return "Bank Select";
         }
         
         return super.getShortDisplayName(actionCallProxy);
@@ -58,10 +59,14 @@ class KemperFunctionMeta extends FunctionMeta {
      * Special implementation for rig select
      */
     #getDisplayNameRigSelect(actionCallProxy = null) {
+        const rig = this.getArgument(actionCallProxy, "rig");
         const rig_off = this.getArgument(actionCallProxy, "rig_off");
         
         if (actionCallProxy && !(rig_off == null || rig_off.value == "None")) {
             return this.#replaceParameterTokens(actionCallProxy, "Toggle Rigs {rig}/{rig_off}");
+        }
+        else if (actionCallProxy && !(rig == null || rig.value != "None")) {
+            return "Select Current Rig";
         }
 
         if (!actionCallProxy) {

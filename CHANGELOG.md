@@ -1,3 +1,35 @@
+# PySwitch v2.4.5
+- Features:
+    - Added **Bank Select Action for the Wheel Encoder**. Turning the wheel preselects the bank. To use the wheel pushbutton to acknowledge the bank keeping the current rig, the possibility to set rig = None for the Rig Select action(s) has been added. This enables to use it as push action for the wheel when used as bank preselector, to acknowledge the preselected bank with the current rig.
+
+- Bug Fixes: 
+    - **Rig Select, Rig Select & Morph Display, Bank Select, Bank Up/Down, Rig Up/Down**: Now the rig select trigger sequence is correct, sending 1 at push and 0 at release, instead of sending them both on push. This enables the Kemper rig button morph function to work also in momentary mode. (@NickMrChaos)
+        - Added an option "momentary_morph" to the Rig Select action(s) which adjusts the "simulated" morph state in accordance to that. Set this to True if you use momentary morph in your rigs.
+    - **Bank up/down** Action: LEDs are now reset correctly after exiting tuner mode (@MetalMauce and others)
+    - Updated examples: 
+        - Nano 4 / tunetown KBDN
+        - Nano 4 / tunetown Session with Looper and Pages
+
+### Emulator 2.4.5.11
+- Features: 
+    - Added support for opening folders on the local file system:
+        - "Open Directory..." lets you choose a folder to open, containing your configuration (inputs.py and display.py)
+        - After changing, you can save anytime with CTRL-S, overwriting the loaded files
+        - Changes made from external editors will immediately reload the emulator automatically if no unsaved changes exist, making it possible to work with external IDEs seamlessly
+        - "Save to Directory..." lets you save the current config to any folder on your file system (you have to create the folder yourself first, which is possible in the selection dialog directly)
+        
+        The feature is implemented using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/File_System_API">File System API</a>, which must be supported to use the functionality. Also, you have to grant access to any folders you want to access.
+
+- Some minor cosmetical changes
+- Rework of the publishing helper scripts (internal)
+
+### Emulator 2.4.5.12
+- Features:
+    - Added a link to the MC10 wheel which opens/closes the additional inputs panel at the bottom.
+
+- Bug Fixes:
+    - Input Settings could not be changed due to an error.
+
 # PySwitch v2.4.3
 - Features:
     - Added mappings for some system parameters (can be used with the wheel encoder, pedals or the "Other Parameter" Actions):

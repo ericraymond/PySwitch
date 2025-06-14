@@ -12,6 +12,30 @@ class Tools {
     }
 
     /**
+     * Reads one File
+     */
+    static async loadFile(file) {
+		return new Promise((resolve, reject) => {
+    		var reader = new FileReader();
+
+    	    reader.onload = function(evt) {
+    	        try {
+    	    		resolve(evt.target.result);
+
+    	        } catch (e) {
+    	        	reject(e);
+    	        }    	        
+    	    }
+
+    	    reader.onerror = function(evt) {
+    	    	reject('Error reading ' + file.name);
+    	    }
+
+    	    reader.readAsText(file); 
+		});
+	}
+
+    /**
      * https://stackoverflow.com/questions/105034/how-do-i-create-a-guid-uuid
      */
     static uuid() {
@@ -108,5 +132,17 @@ class Tools {
             ret += String.fromCharCode(c);
         }
         return ret;
-    }    
+    }
+
+    /**
+     * Helper to get an argument from a raw data node, like coming from the python parser.
+     */
+    static getArgument(node, argName, defaultValue = null) {
+        for (const arg of node.arguments) {
+            if (arg.name != argName) continue;
+
+            return arg;
+        }
+        return defaultValue;
+    }
 }

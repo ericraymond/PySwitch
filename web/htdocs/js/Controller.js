@@ -3,15 +3,15 @@
  */
 class Controller {
 
-    static PYSWITCH_VERSION = "2.4.3";                           // Version of PySwitch this emulator is designed to run with
-    static VERSION = Controller.PYSWITCH_VERSION + ".10";        // PySwitch Emulator Version
+    static PYSWITCH_VERSION = "2.4.5";                           // Version of PySwitch this emulator is designed to run with
+    static VERSION = Controller.PYSWITCH_VERSION + ".12";        // PySwitch Emulator Version
 
     ui = null;                  // User Interface implementation
     routing = null;             // sammy.js router
 
     midi = null;                // MIDI handler
     device = null;              // Device handler (Controller, like Midi Captain)
-    client = null;              // Client handler (like Kemper Player)
+    client = null;              // Client handler (like Kemper Profiler)
     presets = null;             // Presets handler
     pyswitch = null;            // PySwitch runner (in browser)
 
@@ -136,6 +136,8 @@ class Controller {
         this.ui.reset();
 
         this.ui.resetDirtyState();
+
+        if (this.currentConfig) await this.currentConfig.destroy();
         this.currentConfig = null;
 
         // Initialize PySwitch (this starts Pyodide and copies all necessary sources to the Emscripten virtual file system)
@@ -180,7 +182,7 @@ class Controller {
         // Run local PySwitch with the config
         this.ui.progress(0.8, "Run PySwitch");
 
-        await this.pyswitch.run(await config.get());
+        await this.pyswitch.run(config);
 
         this.ui.progress(1);
         this.currentConfig = config;
@@ -224,7 +226,7 @@ class Controller {
                 await that.ui.applyConfig(that.currentConfig);
 
                 // Restart configuration
-                await that.pyswitch.run(await that.currentConfig.get());
+                await that.pyswitch.run(that.currentConfig);
 
                 if (options.message != "none") {
                     that.ui.message(options.message ? options.message : ("Reloaded " + (await that.currentConfig.name())), "S");

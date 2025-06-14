@@ -41,7 +41,13 @@
                         "type": "int",
                         "range": {
                             "min": 1,
-                            "max": "NUM_RIGS_PER_BANK"
+                            "max": "NUM_RIGS_PER_BANK",
+                            "additionalValues": [
+                                {
+                                    "name": "None",
+                                    "value": "None"
+                                }
+                            ]
                         }
                     },
                     {
@@ -607,6 +613,13 @@
 
             {
                 "entityName": "ENCODER_BPM",
+                "category": "other",
+                "target": "AdafruitEncoder",
+                "parameters": []
+            },
+
+            {
+                "entityName": "ENCODER_BANK_SELECT",
                 "category": "other",
                 "target": "AdafruitEncoder",
                 "parameters": []

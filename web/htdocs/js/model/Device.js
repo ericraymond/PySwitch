@@ -19,7 +19,8 @@ class Device {
             return new PaintAudioDevice('pa_midicaptain_10')
         }
         
-        throw new Error("Unknown device type");
+        // Default device type: MidiCaptain 10
+        return new PaintAudioDevice('pa_midicaptain_10');  //throw new Error("Unknown device type");
     }
 
     /**
@@ -49,5 +50,19 @@ class Device {
      */
     isAdditionalInput(model) {
         return false;
+    }
+
+    /**
+     * Must return an array with [width, height]
+     */
+    getDisplayDimensions() {
+        return [0, 0]
+    }
+
+    /**
+     * For the parser frontend, this can create additional content DOM added to the inputs container.
+     */
+    async createAdditionalInputs(controller) {
+        return null;
     }
 }

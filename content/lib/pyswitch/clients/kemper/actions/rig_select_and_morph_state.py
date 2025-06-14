@@ -6,7 +6,7 @@ from .morph import KemperMorphCallback
 from .rig_select import RIG_SELECT, RIG_SELECT_DISPLAY_TARGET_RIG
 
 from ..mappings.morph import MAPPING_MORPH_PEDAL
-from ..mappings.select import MAPPING_RIG_SELECT
+from .. import KemperMappings
 
 
 # Adds morph state display on one LED to the rig select action. The morph display will only be enabled when the rig in question is currently selected.
@@ -29,7 +29,8 @@ def RIG_SELECT_AND_MORPH_STATE(rig,                                            #
                                morph_only_when_enabled = True,                 # Only show the morph state when the "on" rig is selected
                                morph_color_base = Colors.RED,                  # See MORPH_DISPLAY
                                morph_color_morphed = Colors.BLUE,              # See MORPH_DISPLAY
-                               rig_btn_morph = False                           # If set True, second press will trigger toggling the internal morphing state (no command is sent, just the displays are toggled). Only if no rig_off or bank_off are specified.
+                               rig_btn_morph = False,                          # If set True, second press will trigger toggling the internal morphing state (no command is sent, just the displays are toggled). Only if no rig_off or bank_off are specified.
+                               momentary_morph = False                         # If set true, the simulated morph state will operate in momentary mode. Use this if you have use momentary morph mode in your rigs.
 
 ):
     rig_select = RIG_SELECT(
@@ -46,7 +47,8 @@ def RIG_SELECT_AND_MORPH_STATE(rig,                                            #
         color = color,
         text_callback = text_callback,
         text = text,
-        rig_btn_morph = rig_btn_morph
+        rig_btn_morph = rig_btn_morph,
+        momentary_morph = momentary_morph
     )        
     
     return [
@@ -69,7 +71,6 @@ def RIG_SELECT_AND_MORPH_STATE(rig,                                            #
             "id": morph_id if morph_id != None else id,
             "enableCallback": KemperMorphDisplayEnableCallback(
                 action_rig_select = rig_select, 
-                rig = rig, 
                 morph_only_when_enabled = morph_only_when_enabled
             )
         })            
@@ -80,7 +81,6 @@ def RIG_SELECT_AND_MORPH_STATE(rig,                                            #
 class KemperMorphDisplayEnableCallback(Callback):
     def __init__(self, 
                     action_rig_select, 
-                    rig, 
                     morph_only_when_enabled
         ):
         Callback.__init__(self)
@@ -88,13 +88,12 @@ class KemperMorphDisplayEnableCallback(Callback):
         self.__action_rig_select = action_rig_select
         self.__morph_only_when_enabled = morph_only_when_enabled
 
-        self.__mapping = MAPPING_RIG_SELECT(rig - 1)
-        self.register_mapping(self.__mapping)
+        self.register_mapping(KemperMappings.RIG_ID())
         self.__last_enabled = None
 
     def enabled(self, action):
         if self.__morph_only_when_enabled:
-            ret = self.__action_rig_select.state and self.__action_rig_select.enabled
+            ret = self.__action_rig_select.callback.state and self.__action_rig_select.enabled
         else:
             ret = self.__action_rig_select.enabled
 

@@ -1,10 +1,10 @@
-from ...kemper import NUM_RIGS_PER_BANK, BANK_COLORS
-from ....controller.actions import PushButtonAction
-from ....controller.callbacks import BinaryParameterCallback
+from .. import NUM_RIGS_PER_BANK, BANK_COLORS, KemperMappings
+from ....controller.actions import Action
+from ....controller.callbacks import Callback
 from ....misc import get_option
 from ....colors import Colors, dim_color
 
-from ..mappings.select import MAPPING_RIG_SELECT, MAPPING_BANK_AND_RIG_SELECT
+from ..mappings.select import MAPPING_RIG_SELECT, MAPPING_BANK_SELECT
 
 # Display text modes for RIG_SELECT (only regarded if a display is attached to the action)
 RIG_SELECT_DISPLAY_CURRENT_RIG = 10  # Show current rig ID (for example 2-1 for bank 2 rig 1)
@@ -12,7 +12,7 @@ RIG_SELECT_DISPLAY_TARGET_RIG = 20   # Show the target rig ID
 
 
 # Selects a specific rig, or toggles between two rigs (if rig_off is also provided).
-def RIG_SELECT(rig,                                            # Rig to select. Range: [1..5]
+def RIG_SELECT(rig,                                            # Rig to select. Range: [1..5] or None to re-select the current rig. 
                rig_off = None,                                 # If set, this defines the "off" rig chosen when the action is disabled. Set to "auto" to always remember the current rig as "off" rig
                bank = None,                                    # If set, a specific bank is selected. If None, the current bank is kept
                bank_off = None,                                # If set, this defines the "off" bank to be chosen when the action is disabled. Set to "auto" to always remember the current bank as "off" bank
@@ -26,16 +26,17 @@ def RIG_SELECT(rig,                                            # Rig to select. 
                text_callback = None,                           # Optional callback for setting the text. Footprint: def callback(action, bank, rig) -> String where bank and rig are int starting from 0.
                text = None,                                    # Text override (if no text callback is passed)
                auto_exclude_rigs = None,                       # If rig_off is "auto", this can be filled with a tuple or list of rigs to exclude from "remembering" when disabled
-               rig_btn_morph = False                           # If set True, second press will trigger toggling the internal morphing state (no command is sent, just the displays are toggled). Only if no rig_off or bank_off are specified.
+               rig_btn_morph = False,                          # If set True, second press will trigger toggling the internal morphing state (no command is sent, just the displays are toggled). Only if no rig_off or bank_off are specified.
+               momentary_morph = False                         # If set true, the simulated morph state will operate in momentary mode. Use this if you have use momentary morph mode in your rigs.
     ):
     
     # Finally we can create the action definition ;)
-    return PushButtonAction({
+    return Action({
         "display": display,
-        "mode": PushButtonAction.LATCH,
+        #"mode": PushButtonAction.LATCH,
         "id": id,
         "useSwitchLeds": use_leds,
-        "callback": KemperRigSelectCallback(
+        "callback": _KemperRigSelectCallback(
             rig = rig,
             rig_off = rig_off,
             bank = bank,
@@ -46,53 +47,39 @@ def RIG_SELECT(rig,                                            # Rig to select. 
             text = text,
             text_callback = text_callback,
             auto_exclude_rigs = auto_exclude_rigs,
-            rig_btn_morph = rig_btn_morph
+            rig_btn_morph = rig_btn_morph,
+            momentary_morph = momentary_morph
         ),
         "enableCallback": enable_callback
     })  
 
 # Callback implementation for Rig Select, showing bank colors and rig/bank info
-class KemperRigSelectCallback(BinaryParameterCallback):
+class _KemperRigSelectCallback(Callback):
     def __init__(self,
-                    rig,
-                    rig_off,                     
-                    bank,
-                    bank_off,
-                    color,
-                    color_callback,
-                    display_mode,
-                    text,
-                    text_callback,
-                    auto_exclude_rigs = None,
-                    rig_btn_morph = False
+                 rig,
+                 rig_off,                     
+                 bank,
+                 bank_off,
+                 color,
+                 color_callback,
+                 display_mode,
+                 text,
+                 text_callback,
+                 auto_exclude_rigs = None,
+                 rig_btn_morph = False,
+                 momentary_morph = False
         ):
         
+        super().__init__()
+
         if rig_off != None and bank != None and bank_off == None:
             raise Exception() #"Also provide bank_off")        
 
-        if bank == None:
-            mapping = MAPPING_RIG_SELECT(rig - 1)
-            mapping_disable = None if (rig_off == None or rig_off == "auto") else MAPPING_RIG_SELECT(rig_off - 1)
-            value_enable = [1, 0]
-            value_disable = [1, 0]
-        else:
-            mapping = MAPPING_BANK_AND_RIG_SELECT(rig - 1)
-            mapping_disable = None if (rig_off == None or rig_off == "auto") else MAPPING_BANK_AND_RIG_SELECT(rig_off - 1)
-            value_enable = [bank - 1, 1, 0]
-            value_disable = [bank - 1, 1, 0] if (bank_off == None or bank_off == "auto") else [bank_off - 1, 1, 0]
-
-        super().__init__(
-            mapping = mapping,
-            mapping_disable = mapping_disable,
-            value_enable = value_enable,
-            value_disable = value_disable,
-            reference_value = (bank - 1) * NUM_RIGS_PER_BANK + (rig - 1) if bank != None else None,
-            comparison_mode = self.EQUAL if bank != None else BinaryParameterCallback.GREATER_EQUAL 
-        )
-
         self.__current_value = -1
-        self.__current_state = -1
-        self.__mapping = mapping
+
+        self.__mapping = KemperMappings.RIG_ID()
+        self.register_mapping(self.__mapping)
+
         self.__bank = bank
         self.__bank_off = bank_off if bank_off != "auto" else 1
         self.__rig = rig
@@ -111,8 +98,29 @@ class KemperRigSelectCallback(BinaryParameterCallback):
 
         self.__auto_exclude_rigs = auto_exclude_rigs
         self.__rig_btn_morph = rig_btn_morph
+        self.__momentary_morph = momentary_morph
 
         self.__last_blink_state = None
+        self.__sent_rig_mapping = None
+
+    @property
+    def state(self):
+        if self.__mapping.value == None:
+            return False
+        
+        if self.__rig == None:
+            return False
+        
+        # Calculate bank and rig numbers in range [0...]
+        curr_bank = int(self.__mapping.value / NUM_RIGS_PER_BANK)
+        curr_rig = self.__mapping.value % NUM_RIGS_PER_BANK
+
+        # Derive the state we are in
+        if self.__bank != None:
+            if self.__bank - 1 != curr_bank:
+                return False
+            
+        return ( self.__rig - 1 == curr_rig )
 
     def init(self, appl, listener = None):
         super().init(appl, listener)
@@ -123,36 +131,39 @@ class KemperRigSelectCallback(BinaryParameterCallback):
 
         self.__appl = appl
 
-    def state_changed_by_user(self):
-        if "preselectedBank" in self.__appl.shared:
-            set_mapping = self.__mapping
-            value = self._value_enable
+    def reset(self):
+        self.update_displays()
 
-            self.__appl.shared["morphStateOverride"] = 0
-            del self.__appl.shared["preselectedBank"]
+    # Called when the switch is pushed down
+    def push(self):
+        state = self.state
 
-        else:
-            if self.action.state:
-                set_mapping = self.__mapping
-                value = self._value_enable
-            else:
-                if self.mapping_disable:
-                    set_mapping = self.mapping_disable
+        if self.__mapping.value != None:
+            curr_bank = int(self.__mapping.value / NUM_RIGS_PER_BANK)
+            curr_rig = self.__mapping.value % NUM_RIGS_PER_BANK
+
+        # If bank selection is set and no preselection is already in progress, send bank preselect
+        if not "preselectedBank" in self.__appl.shared:
+            if self.__bank != None:
+                if self.__bank_off != None:
+                    if state:
+                        self.__appl.client.set((MAPPING_BANK_SELECT()), self.__bank_off - 1)
+                    else:
+                        self.__appl.client.set(MAPPING_BANK_SELECT(), self.__bank - 1)
                 else:
-                    set_mapping = self.__mapping
-
-                value = self._value_disable
-
+                    self.__appl.client.set(MAPPING_BANK_SELECT(), self.__bank - 1)
+        
             # If the current rig has not changed, toggle global morphing state
             if self.__mapping.value != None:
-                curr_bank = int(self.__mapping.value / NUM_RIGS_PER_BANK)
-                curr_rig = self.__mapping.value % NUM_RIGS_PER_BANK
-
                 if self.__rig_btn_morph and self.__rig_off == None and self.__bank_off == None:
                     if self.__rig == curr_rig + 1 and (not self.__bank or self.__bank == curr_bank + 1):
                         if not "morphStateOverride" in self.__appl.shared:
                             self.__appl.shared["morphStateOverride"] = 0
-                        self.__appl.shared["morphStateOverride"] = 0 if (self.__appl.shared["morphStateOverride"] > 0) else 16383
+
+                        if self.__momentary_morph:
+                            self.__appl.shared["morphStateOverride"] = 16383
+                        else:
+                            self.__appl.shared["morphStateOverride"] = 0 if (self.__appl.shared["morphStateOverride"] > 0) else 16383
                     else:
                         self.__appl.shared["morphStateOverride"] = 0
                 else:
@@ -160,11 +171,43 @@ class KemperRigSelectCallback(BinaryParameterCallback):
             else:
                 self.__appl.shared["morphStateOverride"] = 0
 
-        self.__appl.client.set(set_mapping, value)
+        # Send rig select message
+        self.__sent_rig_mapping = None
 
+        if state and self.__rig_off != None and not "preselectedBank" in self.__appl.shared:           
+            self.__sent_rig_mapping = MAPPING_RIG_SELECT(self.__rig_off - 1)            
+        elif self.__rig != None:
+            self.__sent_rig_mapping = MAPPING_RIG_SELECT(self.__rig - 1)
+        elif self.__mapping.value != None:
+            self.__sent_rig_mapping = MAPPING_RIG_SELECT(curr_rig)
+
+        if self.__sent_rig_mapping:
+            self.__appl.client.set(self.__sent_rig_mapping, 1)
+
+        # If preselection has been active, quit it.
+        if "preselectedBank" in self.__appl.shared:
+            self.__appl.shared["morphStateOverride"] = 0
+            del self.__appl.shared["preselectedBank"]
+
+    # Called when the switch is released
+    def release(self):
+        # Release momentary morph if selected
+        if self.__mapping.value != None:
+            if self.__rig_btn_morph and self.__rig_off == None and self.__bank_off == None:
+                curr_bank = int(self.__mapping.value / NUM_RIGS_PER_BANK)
+                curr_rig = self.__mapping.value % NUM_RIGS_PER_BANK
+
+                if self.__rig == curr_rig + 1 and (not self.__bank or self.__bank == curr_bank + 1):
+                    if self.__momentary_morph:
+                        self.__appl.shared["morphStateOverride"] = 0
+
+        # Send release (0) value if necessary
+        if self.__sent_rig_mapping:
+            self.__appl.client.set(self.__sent_rig_mapping, 0)
+            self.__sent_rig_mapping = None
 
     def update(self):
-        BinaryParameterCallback.update(self)
+        Callback.update(self)
 
         if "preselectedBank" in self.__appl.shared and "preselectBlinkState" in self.__appl.shared:
             bs = self.__appl.shared["preselectBlinkState"]
@@ -188,39 +231,17 @@ class KemperRigSelectCallback(BinaryParameterCallback):
         curr_bank = int(self.__mapping.value / NUM_RIGS_PER_BANK)
         curr_rig = self.__mapping.value % NUM_RIGS_PER_BANK
         
-        if self.__mapping.value != self.__current_value or self.action.state != self.__current_state:
-            if self.__bank != None:
-                self.evaluate_value(self.__mapping.value)
-            else:
-                if self.__mapping.value != None:                        
-                    self.action.feedback_state(curr_rig == self.__rig - 1) 
-                else:
-                    self.action.feedback_state(False)            
-
+        if self.__mapping.value != self.__current_value:
             self.__current_value = self.__mapping.value
-            self.__current_state = self.action.state
 
             # Auto rig off: If we are not on the "on" rig, set the current rig as "off" rig
-            if (not self.__auto_exclude_rigs or (curr_rig + 1) not in self.__auto_exclude_rigs) and self.__rig_off_auto and curr_rig != self.__rig - 1:
-                if self.__bank != None:
-                    self.mapping_disable = MAPPING_BANK_AND_RIG_SELECT(curr_rig)
-                else:
-                    self.mapping_disable = MAPPING_RIG_SELECT(curr_rig)
+            if (not self.__auto_exclude_rigs or (curr_rig + 1) not in self.__auto_exclude_rigs) and self.__rig_off_auto and self.__rig != None and curr_rig != self.__rig - 1:
+                self.__rig_off = curr_rig + 1
                 
             if self.__bank_off_auto and curr_bank != self.__bank - 1:
-                self.__bank_off = curr_bank + 1                    
-                self._value_disable[0] = curr_bank
+                self.__bank_off = curr_bank + 1
 
-            # if "preselectedBank" in self.__appl.shared:                
-            #     del self.__appl.shared["preselectedBank"]
-            
-        if self.__bank != None:
-            is_current = (curr_rig == (self.__rig - 1) and curr_bank == (self.__bank - 1))
-        else:
-            if "preselectedBank" in self.__appl.shared:
-                is_current = False
-            else:
-                is_current = (curr_rig == self.__rig - 1)
+        is_current = self.state
             
         bank_color = self.__get_color(curr_bank, curr_rig, is_current)                    
 
@@ -233,20 +254,27 @@ class KemperRigSelectCallback(BinaryParameterCallback):
             elif self.__display_mode == RIG_SELECT_DISPLAY_TARGET_RIG:
                 if "preselectedBank" in self.__appl.shared:
                     self.action.label.back_color = dim_color(bank_color, self.__default_dim_factor_off) 
-                    self.action.label.text = self.__get_text(self.__appl.shared["preselectedBank"], self.__rig - 1)
+                    if self.__rig != None:
+                        self.action.label.text = self.__get_text(self.__appl.shared["preselectedBank"], self.__rig - 1)
+                    else:
+                        self.action.label.text = self.__get_text(self.__appl.shared["preselectedBank"], curr_rig)
                 else:
-                    self.action.label.back_color = bank_color if self.action.state else dim_color(bank_color, self.__default_dim_factor_off) 
+                    self.action.label.back_color = bank_color if is_current else dim_color(bank_color, self.__default_dim_factor_off) 
 
                     if self.__bank != None:
                         if is_current and self.__rig_off != None and self.__bank_off != None:
                             self.action.label.text = self.__get_text(self.__bank_off - 1, self.__rig_off - 1)
-                        else:
+                        elif self.__rig != None:
                             self.action.label.text = self.__get_text(self.__bank - 1, self.__rig - 1)
+                        else:
+                            self.action.label.text = self.__get_text(self.__bank - 1, curr_rig)
                     else:
                         if is_current and self.__rig_off != None:                    
                             self.action.label.text = self.__get_text(curr_bank, self.__rig_off - 1) 
-                        else:
+                        elif self.__rig != None:
                             self.action.label.text = self.__get_text(curr_bank, self.__rig - 1)
+                        else:
+                            self.action.label.text = self.__get_text(curr_bank, curr_rig)
 
             else:
                 raise Exception()  #"Invalid display mode: " + repr(display_mode))
@@ -258,7 +286,7 @@ class KemperRigSelectCallback(BinaryParameterCallback):
             self.action.switch_brightness = self.__default_led_brightness_on if not self.__appl.shared["preselectBlinkState"] else self.__default_led_brightness_off
             
         else:
-            if self.__display_mode == RIG_SELECT_DISPLAY_TARGET_RIG and self.action.state:
+            if self.__display_mode == RIG_SELECT_DISPLAY_TARGET_RIG and is_current:
                 self.action.switch_brightness = self.__default_led_brightness_on
             else:
                 self.action.switch_brightness = self.__default_led_brightness_off

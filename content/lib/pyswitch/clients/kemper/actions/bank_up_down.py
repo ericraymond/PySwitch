@@ -149,8 +149,6 @@ class KemperBankChangeCallback(Callback):
             
             self.__appl.shared["preselectedBank"] = value
             self.__appl.shared["preselectCallback"] = self
-
-            value = [value]
         else:
             value = 0
 
@@ -164,15 +162,16 @@ class KemperBankChangeCallback(Callback):
     def update(self):
         Callback.update(self)
 
-        # if self.__mapping.value != None:
         if self.__preselect and "preselectedBank" in self.__appl.shared and self.__appl.shared["preselectCallback"] == self and self.__preselect_blink_period.exceeded:
             self.__appl.shared["preselectBlinkState"] = not self.__appl.shared["preselectBlinkState"]
             
             self.update_displays()
 
+    def reset(self):
+        self.update_displays()
+
     def update_displays(self):
         if self.__mapping.value == None:
-            # Fallback to default behaviour
             if self.action.label:
                 self.action.label.text = self.__text
                 self.action.label.back_color = dim_color(Colors.WHITE, self.__dim_factor)

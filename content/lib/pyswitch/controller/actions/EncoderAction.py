@@ -10,7 +10,7 @@ class EncoderAction(Updateable):
                  mapping,                           # Parameter mapping to be controlled
                  min_value = 0,                     # Minimum value of the mapping
                  max_value = None,                  # Maximum value of the mapping (set to None for auto-detect: 16383 for NRPN, 127 for CC)
-                 step_width = None,                 # Increment/Decrement for one encoder step. Set to None for auto-detect (NRPN: 80, CC: 1)
+                 step_width = None,                 # Increment/Decrement for one encoder step. Set to None for auto-detect (NRPN: 80, CC: 1). Can be set to any value greater than 0 (including float values).
                  enable_callback = None,            # Callback to set enabled state (optional). Must contain an enabled(action) function.
                  id = None,
                  accept_action = None,              # Action to acknowledge the entered value. If None, the encoder directly sets values as you turn it. 
@@ -25,8 +25,10 @@ class EncoderAction(Updateable):
                  preview_blink_period_millis = 400, # Blink period for preview (if an accept action is set)
                  preview_blink_color = (200, 200, 200), # Alternative color to be used when blinking.
                  preview_reset_mapping = None,      # A parameter mapping (optional) which will be tracked. If the value changes, the preselect mode will be reset.
-                 convert_value = None,              # Optional conversion routine for displaying values: (value) => string
+                 convert_value = None               # Optional conversion routine for displaying values: (value) => string
         ):
+
+        # Set properties automatically by the mapping type if not set manually
         if isinstance(mapping.set, SystemExclusive):
             if max_value == None:
                 max_value = 16383
@@ -39,18 +41,19 @@ class EncoderAction(Updateable):
                 step_width = 1
 
         self.id = id
-        self.__mapping = mapping
+        self._mapping = mapping
+
         self.__min_value = min_value
         self.__max_value = max_value
         self.__step_width = step_width
 
+        self.__last_pos = -1
+        self._last_value = -1
+        self.__convert_value = convert_value
+
         self.__enable_callback = enable_callback
         if self.__enable_callback:
             self.__enable_callback.action = self
-
-        self.__last_pos = -1
-        self.__last_value = -1
-        self.__convert_value = convert_value
 
         if accept_action:
             accept_action.callback.register_encoder(self, False)
@@ -80,24 +83,38 @@ class EncoderAction(Updateable):
         return self.__enable_callback.enabled(self) if self.__enable_callback else True
 
     def init(self, appl):
-        self.__appl = appl
+        self._appl = appl
 
-        appl.client.register(self.__mapping)
+        appl.client.register(self._mapping)
 
+        # Also register the reset mapping for the preview display
         if self.__preview and self.__preselect and self.__preview_reset_mapping:
             appl.client.register(self.__preview_reset_mapping)
 
     def update(self):
-        self.__appl.client.request(self.__mapping)
+        self._appl.client.request(self._mapping)
 
         if self.__preview:
             self.__preview.update()
 
+    # Override this to scale the incoming mapping values
+    def _get_value(self):
+        return self._mapping.value
+
+    # Override this to scale the mapping values when set from this instance
+    def _set_value(self, value):
+        self._mapping.value = value
+
     # Process the current encoder position
     def process(self, position):
+        # Scale by step width
+        position = int(position * self.__step_width)
+
+        # Initialize
         if self.__last_pos == -1:
             self.__last_pos = position
 
+        # Reset preview if the reset mapping had a value change
         if self.__preview and self.__preselect and self.__preview_reset_mapping:
             if self.__preview_reset_mapping.value != self.__preview_reset_last_value:
                 if self.__preview_reset_mapping.value != None and self.__preview_reset_last_value != None:
@@ -105,27 +122,34 @@ class EncoderAction(Updateable):
 
                 self.__preview_reset_last_value = self.__preview_reset_mapping.value
 
+        # Position didn't change: We are finished here
         if self.__last_pos == position:
             return
-                        
-        if self.__mapping.value == None:
-            self.__mapping.value = 0
+
+        # No value yet
+        if self._get_value() == None:
+            self._set_value(0)
             
-        add_value = (position - self.__last_pos) * self.__step_width        
+        # Get the delta value
+        add_value = position - self.__last_pos
+        #add_value = int((position - self.__last_pos) * self.__step_width)
+
         self.__last_pos = position
 
+        # Get value to set
         if not self.__preselect:
-            v = self.__mapping.value + add_value
+            v = self._get_value() + add_value
         else:
-            v = self.__last_value + add_value
+            v = self._last_value + add_value
 
         if v < self.__min_value:
             v = self.__min_value
         if v > self.__max_value:
             v = self.__max_value
 
-        if self.__last_value != v:
-            self.__last_value = v
+        # If changed, set or preview the value
+        if self._last_value != v:
+            self._last_value = v
             
             if not self.__preselect:
                 self.accept()
@@ -135,7 +159,7 @@ class EncoderAction(Updateable):
             if self.__preview:
                 if not self.__convert_value:
                     self.__preview.preview_mapping(
-                        mapping = self.__mapping,
+                        mapping = self._mapping,
                         value = v,
                         max_value = self.__max_value,
                         client = self,
@@ -156,15 +180,15 @@ class EncoderAction(Updateable):
 
     # Send the last value and reset preview display
     def accept(self):
-        if self.__last_value == -1:
+        if self._last_value == -1:
             return
         
         if self.__preselect and not self.__preselect_active:
             return
         
         # Send message
-        self.__appl.client.set(self.__mapping, self.__last_value)
-        self.__mapping.value = self.__last_value
+        self._appl.client.set(self._mapping, self._last_value)
+        self._set_value(self._last_value)
 
         self.cancel(immediately = False)
 
@@ -172,7 +196,7 @@ class EncoderAction(Updateable):
     def cancel(self, immediately = True):
         self.__preselect_active = False
 
-        self.__last_value = self.__mapping.value
+        self._last_value = self._get_value()
 
         if self.__preview:
             self.__preview.reset(immediately = immediately)

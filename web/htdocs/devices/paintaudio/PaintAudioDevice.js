@@ -55,4 +55,27 @@ class PaintAudioDevice extends Device {
         }
         return false;
     }
+
+    /**
+     * For the parser frontend, this can create additional content DOM added to the inputs container.
+     */
+    async createAdditionalInputs(controller) {
+        if (!this.hasAdditionalInputs()) return null;
+
+        return $('<span class="midicaptain midicaptain-10 additional-inputs-link" />')
+        .on('click', async function() {
+            try {
+                controller.ui.showAdditionalInputs(!controller.ui.additionalInputsShown());
+            } catch (e) {
+                controller.handle(e);
+            }
+        });
+    }
+
+    /**
+     * Must return an array with [width, height]
+     */
+    getDisplayDimensions() {
+        return [240, 240]
+    }
 }

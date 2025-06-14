@@ -251,9 +251,8 @@ class TestKemperActionDefinitions(unittest.TestCase):
         cb_select = action_select.callback
         cb_morph = action_morph.callback
 
-        self.assertIsInstance(cb_select, BinaryParameterCallback)
-        self.assertEqual(cb_select.mapping, MAPPING_RIG_SELECT(0))
-
+        self.assertIsInstance(cb_select, Callback)
+        
         self.assertIsInstance(cb_morph, KemperMorphCallback)
         self.assertEqual(cb_morph.mapping, MAPPING_MORPH_PEDAL())
         self.assertEqual(cb_morph._BinaryParameterCallback__comparison_mode, BinaryParameterCallback.NO_STATE_CHANGE)
@@ -589,14 +588,12 @@ class TestKemperActionDefinitions(unittest.TestCase):
 
         self.assertIsInstance(action, EncoderAction)
 
-        self.assertEqual(action._EncoderAction__mapping, MAPPING_TEMPO_BPM())
+        self.assertEqual(action._mapping, MAPPING_TEMPO_BPM())
         self.assertEqual(action.id, 45)
         self.assertEqual(action._EncoderAction__enable_callback, ecb)
         self.assertEqual(action._EncoderAction__step_width, 1)
         self.assertEqual(action._EncoderAction__preselect, True)
         self.assertEqual(action._EncoderAction__preview.label, display)
-        # self.assertEqual(action._EncoderAction__preview._ValuePreview__blink_color, (3, 4, 5))
-        # self.assertEqual(action._EncoderAction__preview._ValuePreview__period.interval, 345)
 
         appl = MockController()
         action.init(appl)
@@ -634,7 +631,7 @@ class TestKemperActionDefinitions(unittest.TestCase):
 
         self.assertIsInstance(action, EncoderAction)
 
-        self.assertEqual(action._EncoderAction__mapping, MAPPING_RIG_TRANSPOSE())
+        self.assertEqual(action._mapping, MAPPING_RIG_TRANSPOSE())
         self.assertEqual(action.id, 45)
         self.assertEqual(action._EncoderAction__enable_callback, ecb)
         self.assertEqual(action._EncoderAction__step_width, 1)
@@ -698,7 +695,7 @@ class TestKemperActionDefinitions(unittest.TestCase):
 
         self.assertIsInstance(action, EncoderAction)
 
-        self.assertEqual(action._EncoderAction__mapping, MAPPING_AMP_GAIN())
+        self.assertEqual(action._mapping, MAPPING_AMP_GAIN())
         self.assertEqual(action.id, 45)
         self.assertEqual(action._EncoderAction__enable_callback, ecb)
         self.assertEqual(action._EncoderAction__step_width, 1)
