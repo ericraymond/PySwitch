@@ -22,6 +22,63 @@ from pyswitch.hardware.devices.pa_midicaptain_nano_4 import *
 ## -----------------------------------------
 from pyswitch.clients.kemper.actions.effect_state import KemperEffectEnableCallback
 
+# '''
+# What it does:
+#   - Model: Nano 4 Footswitch
+#   - Layout and Footswitch presses
+#      - Header:
+#        - 4 Slots: Header_1. Header_2, Header_3, Header_4
+#        - The outermost ones (Header_1 and Header_4) are controlled by the closest footswitch on a press (1 and 2)*
+#        - The innermost ones (Header_2 and Header_3) are controlled by the closest footswitch on a hold (1 and 2)
+#      - Rig ID (Bank-Preset) number - Always displayed
+#      - Footer:
+#        - 4 Slots: Footer_1. Footer_2, Footer_3, Footer_4
+#        - The outermost ones (Footer_1 and Footer_4) are controlled by the closest footswitch press (A and B)*
+#        - The innermost ones (Footer_2 and Footer_3) are controlled by the closest footswitch hold action (A and B)
+#        - Footer_4 and Footswitch B will change to the next page on a Press.  This is indicated by '>>'.
+#      * Note: If there is not an action on the innermost slot (e.g., Footer 2), the outermost slot can have a hold action
+#   - Pages
+#     - Effect
+#       - Status of enhanced effect blocks
+#       - Footswitches:
+#         - See "Layout and Footswitch presses" section above for general approach
+#         - Press (or hold) to  toggle state on/off of the corresponding slot
+#         - Note:
+#           - Press Action on Footswitch B is next page ('>>').  This is standard for all pages.
+#           - Footer_4 displays Reverb Effect status and color only.  There is no action to toggle state.
+#     - Looper:
+#        - Footswitch A:
+#          - Press: Start/Record/Overdub
+#          - Hold: Stop
+#        - Footswitch B: Undo/Redo
+#        - Footswitch 1: Loooper Volume decrease
+#        - Footswitch 2: Looper Volume increase
+#     - Rig:
+#        - Footswitch A: Next Rig
+#        - Footswitch B:
+#          - Press: Next Page ('>>')
+#          - Hold: Prev Rig
+#        - Footswitch 1: Bank Up
+#        - Footswitch 2: Bank Down
+#     - Util:
+#        - Footswitch A: Freeze
+#        - Footswitch B:
+#          - Press: Next Page ('>>')
+#          - Hold: Tuner
+#        - Footswitch 1: Morph
+#        - Footswitch 2:
+#           - Press: Tap Temp
+#           - Hold: Toggle Headphone Space Intensity between 33% and 0%
+#     - Effect Buttons: Display and toggle status of FX I through FX IIII
+#        NOTE: This is **Disabled** due to limited memory
+#        - Footswitch A: FX III on/off
+#        - Footswitch B:
+#          - Press: Next Page ('>>')
+#          - Hold: FX IIII on/off
+#        - Footswitch 1: FX I
+#        - Footswitch 2: FX II
+# '''
+
 # Patch all the names so they fit in a label
 _MAX_LENGTH = 5
 def _trim_str_vowels_first_rightmost(s: str):
