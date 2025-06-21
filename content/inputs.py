@@ -1,4 +1,6 @@
-from pyswitch.clients.kemper.actions.looper import LOOPER_REC_PLAY_OVERDUB, LOOPER_CANCEL
+#from pyswitch.clients.kemper.actions.effect_button import EFFECT_BUTTON
+# ^^^ Not enough memory to add these
+from pyswitch.clients.kemper.actions.looper import LOOPER_REC_PLAY_OVERDUB, LOOPER_CANCEL, LOOPER_STOP
 from pyswitch.clients.kemper.actions.morph import MORPH_BUTTON
 from pyswitch.clients.kemper.actions.tempo import TAP_TEMPO
 from pyswitch.clients.kemper.actions.bank_up_down import BANK_UP, BANK_DOWN
@@ -244,6 +246,12 @@ _pager = PagerAction(
             "color": Colors.YELLOW,
             "text": 'Util',
         },
+        # Not enough memory to run this
+        # {
+        #     "id": 5,
+        #     "color": Colors.ORANGE,
+        #     "text": 'FX',
+        # }
     ],
     use_leds = False,
     display = DISP_PAGE
@@ -291,6 +299,13 @@ Inputs = [
                 id = 4,
                 enable_callback = _pager.enable_callback
             ),
+            # Not enough memory to run this
+            # EFFECT_BUTTON(
+            #     display = HEADER_1,
+            #     num = 1,
+            #     id=5,
+            #     enable_callback = _pager.enable_callback
+            # )
         ],
         "actionsHold": [
             EFFECT_STATE_ENHANCED(
@@ -350,6 +365,13 @@ Inputs = [
                 id = 4,
                 enable_callback = _pager.enable_callback
             ),
+            # Not enough memory to run this
+            # EFFECT_BUTTON(
+            #     display = HEADER_4,
+            #     num = 2,
+            #     id=5,
+            #     enable_callback = _pager.enable_callback
+            # )
         ],
         "actionsHold": [
             EFFECT_STATE_ENHANCED(
@@ -416,6 +438,13 @@ Inputs = [
                 id = 4,
                 enable_callback = _pager.enable_callback
             ),
+            # Not enough memory to run this
+            # EFFECT_BUTTON(
+            #     display = FOOTER_1,
+            #     num=3,
+            #     id=5,
+            #     enable_callback = _pager.enable_callback
+            # )
         ],
         "actionsHold": [
             EFFECT_STATE_ENHANCED(
@@ -425,9 +454,18 @@ Inputs = [
                 id = 1,
                 enable_callback = _pager.enable_callback
             ),
+            LOOPER_STOP(
+                display = FOOTER_2,
+                text = 'Stop',
+                color = Colors.RED,
+                use_leds= False,
+                id = 2,
+                enable_callback = _pager.enable_callback
+            ),
+
             _STATIC_TEXT(
                 display=FOOTER_2,
-                id=2,
+                id=3,
                 enable_callback = _pager.enable_callback
             ),
         ],
@@ -444,6 +482,12 @@ Inputs = [
                 text = '>>\nRev',
                 enable_callback = _pager.enable_callback,
                 mode=PushButtonAction.NO_STATE_CHANGE
+            ),
+            _STATIC_TEXT(
+                text = ">>",
+                display=FOOTER_4,
+                id=2,
+                enable_callback = _pager.enable_callback
             ),
         ],
         "actionsHold": [
@@ -475,25 +519,27 @@ Inputs = [
             ),
 
             LOOPER_CANCEL(
-                display = FOOTER_4,
-                text = '>>\nUndo',
+                display = FOOTER_3,
+                text = 'Undo',
                 color = Colors.LIGHT_GREEN,
                 id = 2,
                 enable_callback = _pager.enable_callback
             ),
-            _STATIC_TEXT(
-                text = ">>",
-                display=FOOTER_4,
-                id=3,
-                enable_callback = _pager.enable_callback
-            ),
 
             TUNER_MODE(
-                display = FOOTER_4,
-                text = '>>\nTuner',
+                display = FOOTER_3,
+                text = 'Tuner',
                 id = 4,
                 enable_callback = _pager.enable_callback
             ),
+            # Not enough memory to run this
+            # EFFECT_BUTTON(
+            #     display = FOOTER_3,
+            #     num=4,
+            #     text="FX IV",
+            #     id=5,
+            #     enable_callback = _pager.enable_callback
+            # ),
         ],
     },
 ]
